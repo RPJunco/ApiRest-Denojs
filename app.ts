@@ -1,4 +1,6 @@
-import {Application, Router} from 'https://deno.land/x/oak/mod.ts'
+import {Application, Router} from "https://deno.land/x/oak@v12.6.1/mod.ts"
+import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
+
 
 const app = new Application();
 const router = new Router();
@@ -41,14 +43,106 @@ export const getPerro = ({
     response.body = { msj: 'Perro no encontrado' }
 }
 
+export const addPerro = async ({
+    request,
+    response
+}: {
+    request: any,
+    response: any
+}) => {
+    try {
+        const body = await request.body();
+        
+        // Assuming body.type is 'json' if JSON is sent
+        if (body.type !== "json") {
+            response.status = 400;
+            response.body = { msj: "Cuerpo JSON requerido" };
+            return;
+        }
+
+        const perro: Perro = await body.value;
+        
+        // Check for valid 'nombre' and 'edad'
+        if (!perro.nombre || typeof perro.edad !== "number") {
+            response.status = 400;
+            response.body = {
+                msj: "Datos de perro inválidos. Se requieren 'nombre' y 'edad'."
+            };
+            return;
+        }
+        
+        perros.push(perro);
+        response.status = 201;
+        response.body = {
+            msj: "Perro añadido con éxito",
+            perro: perro
+        };
+    } catch (error) {
+        console.error(error);
+        response.status = 500;
+        response.body = { msj: "Error al procesar la solicitud" };
+    }
+};
+
+
+export const updatePerro = async ({
+    params,
+    request,
+    response
+}: {
+    params: {
+        nombre: string
+    },
+    request: any,
+    response: any
+}) => {
+    try {
+        // Leer el cuerpo como texto y luego intentar parsearlo a JSON
+        const rawBody = await request.body({ type: "text" });
+        const bodyText = await rawBody.value;
+        const parsedBody = JSON.parse(bodyText);
+
+        // Validar que tenga 'edad' y que sea un número válido
+        const edad = parsedBody.edad;
+        if (typeof edad !== 'number' || isNaN(edad)) {
+            response.status = 400;
+            response.body = { msj: "La edad proporcionada no es válida" };
+            return;
+        }
+
+        const perroIndex = perros.findIndex((perro) => perro.nombre === params.nombre);
+        
+        if (perroIndex !== -1) {
+            perros[perroIndex].edad = edad;
+            response.status = 200;
+            response.body = { 
+                msj: 'Perro actualizado con éxito',
+                perro: perros[perroIndex]
+            };
+        } else {
+            response.status = 404;
+            response.body = { msj: 'Perro no encontrado' };
+        }
+    } catch (error) {
+        console.error("Error en updatePerro:", error);
+        response.status = 400;
+        response.body = {
+            msj: 'Error al actualizar el perro',
+            error: error.message
+        };
+    }
+};
+
+
+app.use(oakCors()); // 
 app.use(router.routes());
 app.use(router.allowedMethods());
 
 router
     .get('/perros', getPerros)
     .get('/perros/:nombre', getPerro)
-    // .post('/perros', addPerro)
-    // .put('/perros/:nombre', updatePerro)
+    .post('/perros', addPerro)
+    .put('/perros/:nombre', updatePerro)
     // .delete('/perros/:nombre', removePerro);
 
 const env = Deno.env.toObject();
