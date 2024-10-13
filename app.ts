@@ -133,6 +133,39 @@ export const updatePerro = async ({
     }
 };
 
+export const removePerro = ({
+    params,
+    response
+}: {
+    params: {
+        nombre: string
+    },
+    response: any
+}) => {
+    try {
+        const perroIndex = perros.findIndex((perro) => perro.nombre === params.nombre);
+        
+        if (perroIndex !== -1) {
+            const perroEliminado = perros.splice(perroIndex, 1)[0];
+            response.status = 200;
+            response.body = { 
+                msj: 'Perro eliminado con éxito',
+                perro: perroEliminado
+            };
+        } else {
+            response.status = 404;
+            response.body = { msj: 'Perro no encontrado' };
+        }
+    } catch (error) {
+        console.error("Error en removePerro:", error);
+        response.status = 500;
+        response.body = {
+            msj: 'Error al eliminar el perro',
+            error: error.message
+        };
+    }
+}
+
 
 app.use(oakCors()); // 
 app.use(router.routes());
@@ -143,7 +176,7 @@ router
     .get('/perros/:nombre', getPerro)
     .post('/perros', addPerro)
     .put('/perros/:nombre', updatePerro)
-    // .delete('/perros/:nombre', removePerro);
+    .delete('/perros/:nombre', removePerro);
 
 const env = Deno.env.toObject();
 const PORT = env.PORT || 4000
